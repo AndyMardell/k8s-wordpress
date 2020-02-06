@@ -1,0 +1,101 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: wordpress
+  name: wordpress
+spec:
+  selector:
+    matchLabels:
+      app: wordpress
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: wordpress
+    spec:
+      containers:
+        - name: wordpress
+          image: wordpress:latest
+          ports:
+            - containerPort: 80
+          envFrom:
+            - secretRef:
+                name: secrets
+          volumeMounts:
+            - mountPath: /var/www/html/wp-content/themes/custom-theme
+              name: htdocs
+      restartPolicy: Always
+      volumes:
+        - name: htdocs
+          hostPath:
+            path: /mnt1/custom-theme
+
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: mysql
+  name: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+        - name: db
+          image: mariadb:latest
+          ports:
+            - containerPort: 3306
+          envFrom:
+            - secretRef:
+                name: secrets
+          volumeMounts:
+            - name: db-data
+              mountPath: /var/lib/mysql
+      restartPolicy: Always
+      volumes:
+        - name: db-data
+          emptyDir: {}
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: wordpress
+  labels:
+    app: wordpress
+spec:
+  selector:
+    app: wordpress
+  type: NodePort
+  ports:
+    - name: 'wordpress'
+      protocol: TCP
+      port: 80
+      targetPort: 80
+      nodePort: 31001
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: mysql
+  labels:
+    app: mysql
+spec:
+  selector:
+    app: mysql
+  type: NodePort
+  ports:
+    - name: 'mysql'
+      protocol: TCP
+      port: 3306
+      targetPort: 3306
+      nodePort: 31006
